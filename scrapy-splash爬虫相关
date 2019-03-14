@@ -1,0 +1,74 @@
+splash_cebspider爬虫程序运行
+
+1.安装python3
+
+2.安装Scrapy
+
+3.安装splash
+
+命令：pip3 install scrapy-splash
+
+3.安装python-bloomfilter
+
+命令：pip3 install pybloom-live
+
+4.安装docker
+
+5.启动docker
+
+6.拉取镜像(pull the image)
+
+命令：docker pull scrapinghub/splash
+
+7.用docker运行scrapinghub/splash服务：　
+
+命令： docker run -d -p 8050:8050 scrapinghub/splash
+
+-d :后台运行
+
+-p :将容器内部使用的网络端口映射到我们使用的主机上
+
+8.日志切割工具cronolog安装
+
+https://www.cnblogs.com/crazyzero/p/7435691.html
+
+
+
+下载好安装包(https://files.cnblogs.com/files/crazyzero/cronolog-1.6.2.tar.gz)
+
+[root@zero tools]# wget https://files.cnblogs.com/files/crazyzero/cronolog-1.6.2.tar.gz [root@zero tools]# ll cronolog-1.6.2.tar.gz -rw-r--r-- 1 root root 133591 8月 25 2017 cronolog-1.6.2.tar.gz
+
+减压并进入
+
+[root@zero tools]# tar xf cronolog-1.6.2.tar.gz [root@zero tools]# cd cronolog-1.6.2
+
+编译安装
+
+[root@zero cronolog-1.6.2]# ./configure [root@zero cronolog-1.6.2]# make [root@zero cronolog-1.6.2]# make install
+
+生成cronolog工具
+
+[root@zero cronolog-1.6.2]# ll /usr/local/sbin/cronolog -rwxr-xr-x 1 root root 40446 8月 11 11:55 /usr/local/sbin/cronolog
+
+
+
+
+
+9.后台运行splash_cebspider
+
+命令：
+
+nohup scrapy crawl splash_cebspider | nohup /usr/local/sbin/cronolog logs/splash_cebspider_%Y-%m-%d.log >> logs/cronolog.log 2>&1 &
+
+
+
+监控：nohup ./monitor.sh | nohup /usr/local/sbin/cronolog logs/splash_cebspider_%Y-%m-%d.log >> logs/cronolog.log 2>&1 &
+
+
+
+
+
+参考链接：https://www.cnblogs.com/shaosks/p/6950358.html
+
+https://github.com/joseph-fox/python-bloomfilter
+
