@@ -1,0 +1,148 @@
+1.自定义flume的interceptor添加自定义header
+
+package com.huajie.flume.interceptor.custominterceptor;
+
+
+import com.google.common.collect.Lists;
+import org.apache.flume.Context;
+import org.apache.flume.Event;
+import org.apache.flume.interceptor.Interceptor;
+
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+ 
+/**
+ * 
+ * @author Administrator
+ *
+ */
+public class CustomDateInterceptor implements Interceptor {
+ 
+    private CustomDateInterceptor() {
+    }
+ 
+    public void initialize() {
+        // NO-OP...
+    }
+ 
+    public void close() {
+        // NO-OP...
+    }
+
+
+    public Event intercept(Event event) {
+    	
+    	Calendar calendar = Calendar.getInstance();
+    	calendar.setTime(new Date());
+    	calendar.add(Calendar.DATE, -1);
+    	Date preDay = calendar.getTime();
+    	
+    	SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd");
+    	String preDayFormat = sdf.format(preDay);
+    	
+    	Map headers = event.getHeaders();
+    	headers.put("pre_day", preDayFormat);
+    	event.setHeaders(headers);
+
+        return event;
+    }
+ 
+
+    public List<Event> intercept(List<Event> events) {
+        List<Event> intercepted = Lists.newArrayListWithCapacity(events.size());
+        for (Event event : events) {
+            Event interceptedEvent = intercept(event);
+            if (interceptedEvent != null) {
+                intercepted.add(interceptedEvent);
+            }
+        }
+        return intercepted;
+    }
+ 
+    public static class Builder implements Interceptor.Builder {
+        //使用Builder初始化Interceptor
+        public Interceptor build() {
+            return new CustomDateInterceptor();
+        }
+ 
+
+        public void configure(Context context) {
+ 
+        }
+    }
+}
+
+2.将项目打成jar包，放入flume下的 lib目录下
+
+3.custom-interceptor.conf 中应用自定义的interceptor
+
+# tier1.conf: A single-node Flume configuration
+
+# Name the components on this agent
+tier1.sources = r1
+tier1.sinks = k1
+tier1.channels = c1
+
+
+# Describe/configure the source
+tier1.sources.r1.type = spooldir
+tier1.sources.r1.spoolDir  = /opt/splash_cebspider/datas
+tier1.sources.r1.fileSuffix = .completed
+tier1.sources.r1.deletePolicy = never
+#tier1.sources.r1.deletePolicy = immediate
+tier1.sources.r1.fileHeader = true
+tier1.sources.r1.includePattern = ^(.)*\\.json$
+#tier1.sources.r1.ignorePattern = ^(.)*\\.processing$
+
+#自定义interceptor将tier1.sinks.k1.hdfs.path设置为触发时间的前一天
+tier1.sources.r1.interceptors = dateset
+
+tier1.sources.r1.interceptors.dateset.type = com.huajie.flume.interceptor.custominterceptor.CustomDateInterceptor$Builder
+tier1.sources.r1.interceptors.dateset.preserveExisting = true
+
+# Describe the sink
+tier1.sinks.k1.type = hdfs
+tier1.sinks.k1.channel = c1
+tier1.sinks.k1.hdfs.path = /flume/events/ceb_spider/%{pre_day}
+tier1.sinks.k1.hdfs.fileType = DataStream
+tier1.sinks.k1.hdfs.filePrefix = events
+tier1.sinks.k1.hdfs.minBlockReplicas=1
+tier1.sinks.k1.hdfs.rollInterval=3600
+tier1.sinks.k1.hdfs.rollSize=132692539
+tier1.sinks.k1.hdfs.idleTimeout=10
+tier1.sinks.k1.hdfs.batchSize = 1
+tier1.sinks.k1.hdfs.rollCount=0
+tier1.sinks.k1.hdfs.round = true
+tier1.sinks.k1.hdfs.roundValue = 2
+tier1.sinks.k1.hdfs.roundUnit = minute
+tier1.sinks.k1.hdfs.useLocalTimeStamp = true
+
+# Use a channel which buffers events in memory
+tier1.channels.c1.type = memory
+tier1.channels.c1.capacity = 1000
+tier1.channels.c1.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+tier1.sources.r1.channels = c1
+tier1.sinks.k1.channel = c1
+
+
+3.启动flume-ng 
+
+flume-ng agent -c conf -f conf/custom-interceptor.conf -n tier1
+
+
+
+参考链接：
+
+http://blog.51cto.com/caiguangguang/1635772
+
+https://www.cnblogs.com/qwangxiao/p/8321660.html
+
+https://blog.csdn.net/rjhym/article/details/8450728
+
+https://blog.csdn.net/zfszhangyuan/article/details/52449060
